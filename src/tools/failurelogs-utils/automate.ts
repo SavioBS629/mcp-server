@@ -30,13 +30,18 @@ export async function retrieveNetworkFailures(
   const validationError = validateLogResponse(response, "network logs");
   if (validationError) return validationError.message!;
 
-  const networklogs: HarFile = response.data;
-  const failureEntries: HarEntry[] = networklogs.log.entries.filter(
-    (entry: HarEntry) =>
-      entry.response.status === 0 ||
-      entry.response.status >= 400 ||
-      entry.response._error !== undefined,
-  );
+  const networklogs: HarFile | undefined = response.data;
+  const entries = networklogs?.log?.entries;
+  if (!Array.isArray(entries)) {
+    return "No network logs found for this session";
+  }
+  const failureEntries: HarEntry[] = entries.filter((entry: HarEntry) => {
+    if (!entry) return false;
+    const res = entry.response;
+    return (
+      !res || res.status === 0 || res.status >= 400 || res._error !== undefined
+    );
+  });
 
   return failureEntries.length > 0
     ? `Network Failures (${failureEntries.length} found):\n${wrapUntrusted(
